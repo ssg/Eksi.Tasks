@@ -1,9 +1,11 @@
-﻿= Eksi.Tasks =
+Eksi.Tasks
+==========
 
 Eksi.Tasks currently provides NAnt task wrappers around Douglas Crockford's JSLint and Yahoo's YUI Compressor library's !JavaScript and CSS compressors.
 
 In order to preserve compatibility with jsmin/cssmin the same syntax is used. Basic syntax is:
 
+```xml
     <jslint failonerrors="true" config="/*jslint whitespace:true */">
       <fileset>
         <include name="js/*.js" />
@@ -21,8 +23,10 @@ In order to preserve compatibility with jsmin/cssmin the same syntax is used. Ba
         <include name="css/*.css" />
       </fileset>
     </cssmin>
-    
-= Copyright =    
+```
+
+Copyright
+=========
 
 Copyright (c) 2010 Ekşi Teknoloji Ltd. (www.eksiteknoloji.com)
 Licensed under MIT License -- see license.txt for details
