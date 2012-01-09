@@ -1,6 +1,6 @@
 ﻿/*
  * Eksi.Tasks library - collection of NAnt tasks
- * Copyright (c) 2010 Ekşi Teknoloji Ltd. (http://www.eksiteknoloji.com)
+ * Copyright (c) 2010-2012 Ekşi Teknoloji Ltd. (http://www.eksiteknoloji.com)
  * Licensed under MIT License, read license.txt for details
  */
 
@@ -39,6 +39,7 @@ namespace Eksi.Tasks
         private const int maxOutputLineLength = 100; 
         private readonly Encoding defaultEncoding = Encoding.UTF8;
         private ProcessStartInfo startInfo;
+        private string config;
 
         [BuildElement("fileset", Required=true)]
         public FileSet Files { get; set; }
@@ -48,7 +49,6 @@ namespace Eksi.Tasks
         /// "/*jslint x: true, y: true, z: true */" or
         /// "x: true, y: true, z: true"
         /// </summary>
-        private string config;
         [TaskAttribute("config", Required = false)]
         [StringValidator(AllowEmpty = false)] 
         public string Config 
@@ -82,10 +82,9 @@ namespace Eksi.Tasks
             {
                 encoding = Encoding.GetEncoding(TextEncoding);
             }
-            string cmd;
-            string jsLintPath;
-            getJsLintPath(out cmd, out jsLintPath);
-            createProcessStartInfo(cmd, jsLintPath);
+            string cmdPath = getCmdPath();
+            string jsLintPath = getJsLintPath();
+            createProcessStartInfo(cmdPath, jsLintPath);
             bool error = false;
             foreach (var fileName in Files.FileNames)
             {
@@ -97,12 +96,16 @@ namespace Eksi.Tasks
             }
         }
 
-        private static void getJsLintPath(out string cmd, out string jsLintPath)
+        private string getCmdPath()
         {
             string systemPath = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            cmd = Path.Combine(systemPath, cscriptFileName);
+            return Path.Combine(systemPath, cscriptFileName);
+        }
+
+        private static string getJsLintPath()
+        {
             string dllPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            jsLintPath = Path.Combine(dllPath, jsLintFileName);
+            return Path.Combine(dllPath, jsLintFileName);
         }
 
         private bool runJSLint(string fileName)
