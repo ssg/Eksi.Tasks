@@ -33,14 +33,12 @@ namespace Eksi.Tasks
     public class JSLintTask: Task
     {
         private const string jsLintFileName = "jslint.js";
-        private const string defaultJSLintConfig 
-            = "/*jslint white: true, browser: true, onevar: true, undef: true, nomen: true, eqeqeq: true, plusplus: true, bitwise: true, regexp: true, strict: true, newcap: true, immed: true */";
+        private const string defaultJSLintConfig = "/*jslint white: true, browser: true, onevar: true, undef: true, nomen: true, eqeqeq: true, plusplus: true, bitwise: true, regexp: true, strict: true, newcap: true, immed: true */";
         private const string cscriptFileName = "cscript.exe";
         private const string indentStr = "    {0}\n\r";
-
         private const int maxOutputLineLength = 100; 
-
         private readonly Encoding defaultEncoding = Encoding.UTF8;
+        private ProcessStartInfo startInfo;
 
         [BuildElement("fileset", Required=true)]
         public FileSet Files { get; set; }
@@ -50,9 +48,28 @@ namespace Eksi.Tasks
         /// "/*jslint x: true, y: true, z: true */" or
         /// "x: true, y: true, z: true"
         /// </summary>
-        [TaskAttribute("config", Required=false)]
-        [StringValidator(AllowEmpty=false)]
-        public string Config { get; set; }
+        private string config;
+        [TaskAttribute("config", Required = false)]
+        [StringValidator(AllowEmpty = false)] 
+        public string Config 
+        { 
+            get
+            {
+                if(this.config == null)
+                {
+                    this.config = defaultJSLintConfig;
+                }
+                else if (!config.StartsWith("/*jslint "))
+                {
+                    this.config = String.Format("/*jslint {0} */", this.config);
+                }
+                return this.config;           
+            }
+            set
+            {
+                this.config = value;                
+            } 
+        }
 
         [TaskAttribute("encoding", Required = false)]
         [StringValidator(AllowEmpty = false)]
@@ -60,70 +77,70 @@ namespace Eksi.Tasks
 
         protected override void ExecuteTask()
         {
-            string config = Config;
-            if (config == null)
-            {
-                // the good parts
-                config = defaultJSLintConfig;
-            }
-            if (!config.StartsWith("/*jslint "))
-            {
-                config = String.Format("/*jslint {0} */", config);
-            }
-
             Encoding encoding = defaultEncoding;
             if (!String.IsNullOrEmpty(TextEncoding))
             {
                 encoding = Encoding.GetEncoding(TextEncoding);
             }
-
-            string systemPath = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            string cmd = Path.Combine(systemPath, cscriptFileName);
-            string dllPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            string jsLintPath = Path.Combine(dllPath, jsLintFileName);
-
-            // use common start info among iterations
-            var startInfo = new ProcessStartInfo(cmd, String.Format("//nologo {0}", jsLintPath));
-            startInfo.RedirectStandardInput = true;
-            startInfo.RedirectStandardError = true;
-            startInfo.UseShellExecute = false;
-
+            string cmd;
+            string jsLintPath;
+            getJsLintPath(out cmd, out jsLintPath);
+            createProcessStartInfo(cmd, jsLintPath);
             bool error = false;
             foreach (var fileName in Files.FileNames)
             {
-                Log(Level.Info, String.Format("Checking {0}", fileName));
-                string expandedFileName = Project.ExpandProperties(fileName, Location);
-                Process process = Process.Start(startInfo);
-                string content = File.ReadAllText(expandedFileName);
-                if (config != String.Empty)
-                {
-                    process.StandardInput.WriteLine(config);
-                }
-                process.StandardInput.Write(content);
-                process.StandardInput.Close();
-                while(!process.StandardError.EndOfStream)
-                {
-                    var sb = new StringBuilder();
-                    string str = process.StandardError.ReadLine();
-                    sb.AppendFormat(indentStr, str);
-                    if(!process.StandardError.EndOfStream)
-                    {
-                        str = process.StandardError.ReadLine();
-                        if (str.Length > maxOutputLineLength)
-                        {
-                            str = str.Remove(maxOutputLineLength) + "...";
-                        }
-                        sb.AppendFormat(indentStr, str);
-                    }
-                    Log(Level.Error, sb.ToString());
-                    error = true;
-                }
+                error |= runJSLint(fileName);
             }
-
             if (error && this.FailOnError)
             {
                 throw new BuildException("JSLint found errors");
             }
+        }
+
+        private static void getJsLintPath(out string cmd, out string jsLintPath)
+        {
+            string systemPath = Environment.GetFolderPath(Environment.SpecialFolder.System);
+            cmd = Path.Combine(systemPath, cscriptFileName);
+            string dllPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            jsLintPath = Path.Combine(dllPath, jsLintFileName);
+        }
+
+        private bool runJSLint(string fileName)
+        {
+            Log(Level.Info, String.Format("Checking {0}", fileName));
+            string expandedFileName = Project.ExpandProperties(fileName, Location);
+            Process process = Process.Start(startInfo);
+            string content = File.ReadAllText(expandedFileName);
+            process.StandardInput.WriteLine(Config);
+            process.StandardInput.Write(content);
+            process.StandardInput.Close();
+            bool error = false;
+            while (!process.StandardError.EndOfStream)
+            {
+                var sb = new StringBuilder();
+                string str = process.StandardError.ReadLine();
+                sb.AppendFormat(indentStr, str);
+                if (!process.StandardError.EndOfStream)
+                {
+                    str = process.StandardError.ReadLine();
+                    if (str.Length > maxOutputLineLength)
+                    {
+                        str = str.Remove(maxOutputLineLength) + "...";
+                    }
+                    sb.AppendFormat(indentStr, str);
+                }
+                Log(Level.Error, sb.ToString());
+                error = true;
+            }
+            return error;
+        }
+
+        private void createProcessStartInfo(string cmd, string jsLintPath)
+        {
+            startInfo = new ProcessStartInfo(cmd, String.Format("//nologo {0}", jsLintPath));
+            startInfo.RedirectStandardInput = true;
+            startInfo.RedirectStandardError = true;
+            startInfo.UseShellExecute = false;
         }
     }
 }
