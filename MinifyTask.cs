@@ -15,7 +15,7 @@ namespace Eksi.Tasks
     /// <summary>
     /// This is the base task to derive all "minimizers" from.
     /// </summary>
-    public class MinifyTask : Task
+    public abstract class MinifyTask : Task
     {
         [TaskAttribute("suffix", Required = false)]
         public string Suffix { get; set; }
@@ -30,29 +30,20 @@ namespace Eksi.Tasks
         {
             string suffix = Suffix;
             string destPath = DestPath;
-
             foreach (var fileName in Files.FileNames)
             {
                 string outputFileName = Path.GetFileNameWithoutExtension(fileName)
                         + (suffix ?? String.Empty) + Path.GetExtension(fileName);
-
                 string outputPath = destPath ?? Path.GetDirectoryName(fileName);
-
                 if (!Directory.Exists(outputPath))
                 {
                     Directory.CreateDirectory(outputPath);
                 }
-
                 outputFileName = Path.Combine(outputPath, outputFileName);
-
                 Minify(fileName, outputFileName);
             }
         }
 
-        protected virtual void Minify(string inputFileName, string outputFileName)
-        {
-            throw new NotImplementedException("Forgot to override Minify");
-        }
-
+        protected abstract void Minify(string inputFileName, string outputFileName);
     }
 }
